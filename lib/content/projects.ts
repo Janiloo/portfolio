@@ -34,8 +34,136 @@ export interface Project {
 
 export const projects: Project[] = [
   {
-    slug: "ai-recruitment-platform",
+    slug: "ai-document-intelligence",
     index: "01",
+    title: "AI Document Intelligence Platform",
+    short:
+      "Multi-tenant SaaS that turns unstructured documents into searchable knowledge, structured JSON, and cited conversational answers via RAG.",
+    tagline:
+      "Upload a document. An async pipeline extracts, classifies, grounds, embeds, and makes it answerable — with page-level citations.",
+    status: { label: "Portfolio project — Vercel + Railway", live: false },
+    problem:
+      "Organizations sit on mountains of unstructured documents — invoices, contracts, receipts, resumes — locked in PDFs, scans, and phone photos. Finding specific information means manual searching, and extracting structured data means re-typing it. There's no single system that ingests, understands, and answers questions across a document corpus with verifiable citations.",
+    solution:
+      "A multi-tenant document platform with a five-stage async pipeline: upload any document (PDF, scan, photo, DOCX), acquire its text (digital extraction or vision OCR), classify it, extract typed fields with grounding verification against the source text (anti-hallucination), then chunk and embed it for hybrid search and RAG chat with page-level citation chips. Every AI call is cost-metered; every table is RLS-scoped.",
+    stages: [
+      {
+        id: "upload",
+        label: "Document Upload",
+        sub: "drag-and-drop · signed URLs",
+        detail:
+          "Users drag files onto a dropzone. The browser uploads directly to Supabase Storage via a signed URL — the server never proxies large files. A document row and a pipeline job are enqueued atomically into pgmq.",
+      },
+      {
+        id: "text",
+        label: "Text Acquisition",
+        sub: "unpdf · mammoth · page-aware",
+        detail:
+          "The worker extracts text from the digital layer: unpdf for PDFs (page-by-page), mammoth for DOCX. Output is per-page text arrays so downstream chunking and citations can reference exact page numbers. If no digital text is found, the pipeline chains to OCR.",
+      },
+      {
+        id: "ocr",
+        label: "Vision OCR",
+        sub: "Gemini Flash · Tesseract fallback",
+        detail:
+          "Scanned PDFs and phone photos go through Gemini Flash vision OCR — the model reads the document image directly. If the vision call fails, Tesseract.js (bundled with trained English data) runs locally as a deterministic fallback. Scans become first-class searchable text.",
+      },
+      {
+        id: "classify",
+        label: "Classification",
+        sub: "invoice · receipt · contract · resume",
+        detail:
+          "The extracted text is classified into document types with a confidence score. Classification drives which extraction schema applies next — invoices get line-item extraction, receipts get totals, contracts get party/date extraction.",
+      },
+      {
+        id: "extract",
+        label: "Grounded Extraction",
+        sub: "typed JSON · anti-hallucination",
+        detail:
+          "Structured fields are extracted into typed JSON schemas (Zod-validated). Every leaf value is verified against the source text by a pure-function grounding engine — number variants, date format variants, and token-overlap matching. Ungrounded fields are flagged with per-field confidence and routed to a human review queue.",
+      },
+      {
+        id: "embed",
+        label: "Chunking & Embedding",
+        sub: "page-anchored · pgvector HNSW",
+        detail:
+          "Text is split into page-anchored chunks (~600 tokens, sentence-boundary-aware, with overlap). Each chunk is embedded via Gemini and stored in pgvector with an HNSW index. Chunks never span pages, so every citation carries an exact page number.",
+      },
+      {
+        id: "search",
+        label: "Hybrid Search",
+        sub: "vector + FTS · Reciprocal Rank Fusion",
+        detail:
+          "Search queries hit both the pgvector semantic index and Postgres full-text search in parallel. Results are fused with Reciprocal Rank Fusion (k=60) in a single SQL function that runs under SECURITY INVOKER — RLS enforces tenant isolation on every retrieved row, not the app layer.",
+      },
+      {
+        id: "rag",
+        label: "RAG Chat",
+        sub: "streamed · cited · refusal-aware",
+        detail:
+          "Conversational questions are rewritten into standalone search queries, top-8 chunks are retrieved, and the answer is streamed with citation tags ([C1], [C2]) that map to page-level source chips. A sanitizer strips any citation tag the model fabricated (no matching chunk). When the answer isn't in the documents, the model returns an exact refusal marker — no hallucinated answers.",
+      },
+    ],
+    challenges: [
+      {
+        title: "LLM extraction hallucination",
+        detail:
+          "Extracted values can't be trusted by default. A pure-function grounding engine verifies every leaf value against the source text — tolerating number formatting variants, regional date formats, and OCR noise (80% token overlap for longer strings). Ungrounded fields get flagged, not silently accepted.",
+      },
+      {
+        title: "At-least-once pipeline with idempotent stages",
+        detail:
+          "The pipeline runs as pgmq queue jobs with visibility-timeout-based delivery. Each stage is idempotent — retries with exponential backoff, terminal vs. transient error classification, and dead-lettering. A killed worker just means the message becomes visible again.",
+      },
+      {
+        title: "Hybrid search under multi-tenant RLS",
+        detail:
+          "The search function runs as SECURITY INVOKER so Postgres RLS policies gate every returned row — tenant isolation is enforced by the database, not by WHERE clauses the app remembers to add. Vector similarity and full-text relevance are fused in one query.",
+      },
+      {
+        title: "Citation integrity in streamed RAG",
+        detail:
+          "The model can invent citation tags that don't correspond to retrieved chunks. A post-generation sanitizer strips fabricated tags and returns only valid cited sources. The UI renders surviving citations as clickable chips that jump to the cited page.",
+      },
+    ],
+    decisions: [
+      "pgmq over external queue infra — the pipeline queue lives in the same Postgres that stores the data, so enqueue-on-insert is a single transaction with zero extra services.",
+      "Page-anchored chunking (chunks never span pages) so every citation carries an exact page number — precision over recall in the retrieval layer.",
+      "Grounding as a pure function, not a second LLM call — deterministic, testable, zero additional cost, and 48 unit tests cover the edge cases.",
+      "SECURITY INVOKER on search_chunks so RLS enforcement is the database's job, not a convention the app must remember.",
+      "Cost metering on every AI call (tokens + estimated USD) with a live usage widget — visibility into spend from day one.",
+    ],
+    tech: [
+      "Next.js 15",
+      "React 19",
+      "TypeScript",
+      "Supabase (PostgreSQL + pgvector + pgmq + RLS)",
+      "Gemini API (vision + text + embeddings)",
+      "Vercel AI SDK",
+      "Tesseract.js",
+      "Turborepo",
+      "Vitest",
+      "Docker",
+      "Railway",
+      "pino",
+      "Sentry",
+      "Tailwind CSS",
+    ],
+    links: {},
+    repoNote: "Source is private — code walkthrough available on request.",
+    media: [],
+    mediaNote:
+      "Deploys as three services (Vercel web + Railway worker + Supabase). Screenshots and a pipeline demo are being prepared.",
+    homeHighlights: [
+      "RAG chat with page-level citations and hallucination refusal",
+      "Anti-hallucination grounding engine (48 unit tests)",
+      "Hybrid search: pgvector HNSW + FTS fused with RRF",
+      "Async pipeline: pgmq queue, idempotent stages, dead-lettering",
+    ],
+  },
+  {
+    slug: "ai-recruitment-platform",
+    index: "02",
     title: "AI Recruitment Automation Platform",
     short:
       "Multi-tenant SaaS that turns inbound resume emails into AI-screened, ranked candidates — zero manual data entry.",
@@ -158,7 +286,7 @@ export const projects: Project[] = [
   },
   {
     slug: "ai-video-pipeline",
-    index: "02",
+    index: "03",
     title: "AI Video Clipping Pipeline",
     short:
       "Turns a livestream VOD into captioned vertical clips — Whisper transcription, Gemini moment selection, face-aware FFmpeg rendering.",
@@ -259,7 +387,7 @@ export const projects: Project[] = [
   },
   {
     slug: "ondago-fleet-tracking",
-    index: "03",
+    index: "04",
     title: "ONDAGO — Real-Time Fleet Tracking Platform",
     short:
       "Live public-transport tracking: SignalR fan-out, MongoDB geospatial queries, and multi-tenant .NET backend serving mobile + web clients.",

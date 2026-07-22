@@ -26,6 +26,8 @@ export const skillCategories: SkillCategory[] = [
       "Semantic Search",
       "Prompt Caching",
       "Multi-Provider LLM Abstraction",
+      "RAG Pipelines",
+      "Vercel AI SDK",
     ],
   },
   {
