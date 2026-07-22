@@ -41,7 +41,7 @@ export const projects: Project[] = [
       "Multi-tenant SaaS that turns unstructured documents into searchable knowledge, structured JSON, and cited conversational answers via RAG.",
     tagline:
       "Upload a document. An async pipeline extracts, classifies, grounds, embeds, and makes it answerable — with page-level citations.",
-    status: { label: "Portfolio project — Vercel + Railway", live: false },
+    status: { label: "Live on Vercel", live: true },
     problem:
       "Organizations sit on mountains of unstructured documents — invoices, contracts, receipts, resumes — locked in PDFs, scans, and phone photos. Finding specific information means manual searching, and extracting structured data means re-typing it. There's no single system that ingests, understands, and answers questions across a document corpus with verifiable citations.",
     solution:
