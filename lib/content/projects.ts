@@ -149,11 +149,9 @@ export const projects: Project[] = [
       "Sentry",
       "Tailwind CSS",
     ],
-    links: {},
+    links: { demo: "https://ai-saas-document-inteligence-web.vercel.app/" },
     repoNote: "Source is private — code walkthrough available on request.",
     media: [],
-    mediaNote:
-      "Deploys as three services (Vercel web + Railway worker + Supabase). Screenshots and a pipeline demo are being prepared.",
     homeHighlights: [
       "RAG chat with page-level citations and hallucination refusal",
       "Anti-hallucination grounding engine (48 unit tests)",
